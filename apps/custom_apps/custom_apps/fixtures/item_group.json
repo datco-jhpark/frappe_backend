@@ -1,0 +1,51 @@
+[
+    {
+        "doctype": "Item Group",
+        "name": "상품",
+        "item_group_name": "상품",
+        "is_group": 0,
+        "parent_item_group": "All Item Groups"
+    },
+    {
+        "doctype": "Item Group",
+        "name": "원재료",
+        "item_group_name": "원재료",
+        "is_group": 0,
+        "parent_item_group": "All Item Groups"
+    },
+    {
+        "doctype": "Item Group",
+        "name": "부재료",
+        "item_group_name": "부재료",
+        "is_group": 0,
+        "parent_item_group": "All Item Groups"
+    },
+    {
+        "doctype": "Item Group",
+        "name": "제품",
+        "item_group_name": "제품",
+        "is_group": 0,
+        "parent_item_group": "All Item Groups"
+    },
+    {
+        "doctype": "Item Group",
+        "name": "반제품",
+        "item_group_name": "반제품",
+        "is_group": 0,
+        "parent_item_group": "All Item Groups"
+    },
+    {
+        "doctype": "Item Group",
+        "name": "부산품",
+        "item_group_name": "부산품",
+        "is_group": 0,
+        "parent_item_group": "All Item Groups"
+    },
+    {
+        "doctype": "Item Group",
+        "name": "저장품",
+        "item_group_name": "저장품",
+        "is_group": 0,
+        "parent_item_group": "All Item Groups"
+    }
+]
