@@ -6,6 +6,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$env:FRAPPE_SITE_NAME_HEADER = $SiteName
+$env:DB_PASSWORD = $DbRootPassword
+$env:HTTP_PUBLISH_PORT = "8080"
+
 docker compose down -v
 
 docker compose up -d
@@ -35,3 +39,5 @@ docker compose restart backend frontend websocket queue-short queue-long schedul
 
 Write-Host "OK: http://localhost:8080 (Site: $SiteName)"
 Write-Host "Login: Administrator / $AdminPassword"
+
+Start-Process "chrome" "http://localhost:8080"
