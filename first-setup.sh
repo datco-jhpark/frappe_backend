@@ -25,6 +25,8 @@ fi
 
 cd "$PROJECT_DIR"
 
+BENCH_DIR="/home/frappe/frappe-bench"
+
 # 1) Ensure .env exists
 if [[ ! -f .env ]]; then
   if [[ -f example.env ]]; then
@@ -108,20 +110,28 @@ if docker compose --project-directory "$PROJECT_DIR" exec -T backend bash -lc "t
 else
   log "사이트를 생성합니다: $SITE_NAME"
   docker compose --project-directory "$PROJECT_DIR" exec -T backend bash -lc \
-    "bench new-site '$SITE_NAME' --admin-password '$ADMIN_PASSWORD' --mariadb-root-password '$DB_ROOT_PASSWORD' --install-app erpnext"
+    "cd '$BENCH_DIR' && bench new-site '$SITE_NAME' --admin-password '$ADMIN_PASSWORD' --mariadb-root-password '$DB_ROOT_PASSWORD' --install-app erpnext"
 fi
 
 # 6) Migrate and enable scheduler
 log "마이그레이션 실행(bench migrate)"
-docker compose --project-directory "$PROJECT_DIR" exec -T backend bash -lc "bench --site '$SITE_NAME' migrate"
+docker compose --project-directory "$PROJECT_DIR" exec -T backend bash -lc "cd '$BENCH_DIR' && bench --site '$SITE_NAME' migrate"
 
 # 6.1) Install local custom app (if present)
 if [[ "$INSTALL_CUSTOM_APPS" == "1" ]] && [[ -d "$PROJECT_DIR/apps/custom_apps" ]]; then
   log "로컬 앱을 감지했습니다: apps/custom_apps"
 
+  log "custom_apps를 파이썬 환경에 설치합니다(editable)"
+  docker compose --project-directory "$PROJECT_DIR" exec -T backend bash -lc \
+    "cd '$BENCH_DIR' && bench pip install -e apps/custom_apps"
+
+  log "apps.txt에 custom_apps를 추가합니다"
+  docker compose --project-directory "$PROJECT_DIR" exec -T backend bash -lc \
+    "cd '$BENCH_DIR' && touch sites/apps.txt && { grep -Fxq 'custom_apps' sites/apps.txt || echo 'custom_apps' >> sites/apps.txt; }"
+
   is_installed="0"
-  if docker compose --project-directory "$PROJECT_DIR" exec -T backend bash -lc "bench --site '$SITE_NAME' list-apps" >/dev/null 2>&1; then
-    if docker compose --project-directory "$PROJECT_DIR" exec -T backend bash -lc "bench --site '$SITE_NAME' list-apps" | tr -d '\r' | grep -Fxq "custom_apps"; then
+  if docker compose --project-directory "$PROJECT_DIR" exec -T backend bash -lc "cd '$BENCH_DIR' && bench --site '$SITE_NAME' list-apps" >/dev/null 2>&1; then
+    if docker compose --project-directory "$PROJECT_DIR" exec -T backend bash -lc "cd '$BENCH_DIR' && bench --site '$SITE_NAME' list-apps" | tr -d '\r' | grep -Fxq "custom_apps"; then
       is_installed="1"
     fi
   elif docker compose --project-directory "$PROJECT_DIR" exec -T backend bash -lc "test -f '/home/frappe/frappe-bench/sites/$SITE_NAME/apps.txt'" >/dev/null 2>&1; then
@@ -136,16 +146,23 @@ if [[ "$INSTALL_CUSTOM_APPS" == "1" ]] && [[ -d "$PROJECT_DIR/apps/custom_apps" 
     log "$SITE_NAME 에 custom_apps를 설치합니다"
     docker compose --project-directory "$PROJECT_DIR" exec -T \
       -e FORCE_SEED_ITEM_GROUPS="$FORCE_SEED_ITEM_GROUPS" \
-      backend bash -lc "bench --site '$SITE_NAME' install-app custom_apps"
+      backend bash -lc "cd '$BENCH_DIR' && bench --site '$SITE_NAME' install-app custom_apps"
     log "custom_apps 설치 후 마이그레이션을 다시 실행합니다"
-    docker compose --project-directory "$PROJECT_DIR" exec -T backend bash -lc "bench --site '$SITE_NAME' migrate"
+    docker compose --project-directory "$PROJECT_DIR" exec -T backend bash -lc "cd '$BENCH_DIR' && bench --site '$SITE_NAME' migrate"
+
+    log "서비스를 재시작합니다(backend/frontend/websocket)"
+    docker compose --project-directory "$PROJECT_DIR" restart backend frontend websocket
+
+    log "custom_apps import를 확인합니다"
+    docker compose --project-directory "$PROJECT_DIR" exec -T backend bash -lc \
+      "'$BENCH_DIR'/env/bin/python -c 'import custom_apps; import custom_apps.hooks'"
   fi
 else
   log "apps/custom_apps가 없거나 INSTALL_CUSTOM_APPS != 1 입니다(custom app 설치 건너뜀)"
 fi
 
 log "스케줄러를 활성화합니다"
-docker compose --project-directory "$PROJECT_DIR" exec -T backend bash -lc "bench --site '$SITE_NAME' enable-scheduler"
+docker compose --project-directory "$PROJECT_DIR" exec -T backend bash -lc "cd '$BENCH_DIR' && bench --site '$SITE_NAME' enable-scheduler"
 
 # 7) Quick HTTP check
 log "HTTP 응답을 확인합니다: http://localhost:${HTTP_PUBLISH_PORT}"
